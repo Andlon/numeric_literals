@@ -5,7 +5,6 @@ use syn::{parse_macro_input, Expr, Item, ExprLit};
 use syn::visit_mut::{VisitMut, visit_item_mut, visit_expr_mut};
 
 use quote::quote;
-use quote::ToTokens;
 use syn::punctuated::Pair;
 
 /// Visit an expression and replaces any numeric literal
@@ -61,7 +60,7 @@ impl VisitMut for ReplacementExpressionVisitor {
 }
 
 #[proc_macro_attribute]
-pub fn numeric_literals(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn replace_numeric_literals(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut input = parse_macro_input!(item as Item);
     let attributes_tree = parse_macro_input!(attr as Expr);
 
