@@ -1,7 +1,7 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 
-use syn::{parse_macro_input, Expr, Item, ExprLit};
+use syn::{parse_macro_input, Expr, Item, ExprLit, Lit};
 use syn::visit_mut::{VisitMut, visit_item_mut, visit_expr_mut};
 
 use quote::quote;
@@ -19,17 +19,27 @@ impl VisitMut for NumericLiteralVisitor {
     fn visit_expr_mut(&mut self, expr: &mut Expr) {
         match expr  {
             Expr::Lit(lit_expr) => {
-                let mut adapted_replacement = self.replacement.clone();
-                let mut replacer = ReplacementExpressionVisitor {
-                    placeholder: self.placeholder.clone(),
-                    literal: lit_expr.clone()
-                };
+                match lit_expr.lit {
+                    // TODO: Currently we cannot correctly treat integers that don't fit in 64
+                    // bits. For this we'd have to deal with verbatim literals and manually
+                    // parse the string
+                    Lit::Int(_) | Lit::Float(_) => {
+                        let mut adapted_replacement = self.replacement.clone();
+                        let mut replacer = ReplacementExpressionVisitor {
+                            placeholder: self.placeholder.clone(),
+                            literal: lit_expr.clone()
+                        };
 
-                replacer.visit_expr_mut(&mut adapted_replacement);
-                *expr = adapted_replacement;
+                        replacer.visit_expr_mut(&mut adapted_replacement);
+                        *expr = adapted_replacement;
+                        return;
+                    },
+                    _ => {}
+                }
             },
-            _ => visit_expr_mut(self, expr)
+            _ => {}
         }
+        visit_expr_mut(self, expr)
     }
 }
 
