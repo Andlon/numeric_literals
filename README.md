@@ -45,3 +45,8 @@ That said, the macro should be used with care. It is recommended to keep the mac
 the region in which the literals are being used, as to avoid confusion for readers of the code.
 The Rust code that is usually not valid Rust (because of the lack of explicit conversion),
 but without the context of the attribute, it is simply not clear why this code still compiles.
+
+License
+=======
+
+This crate is licensed under the MIT license. See LICENSE for details.
