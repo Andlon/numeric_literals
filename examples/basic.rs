@@ -1,6 +1,6 @@
-extern crate numliterals;
+extern crate numeric_literals;
 
-use numliterals::replace_numeric_literals;
+use numeric_literals::replace_numeric_literals;
 use std::ops::Div;
 use std::convert::TryFrom;
 use std::fmt::Debug;

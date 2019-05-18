@@ -1,5 +1,5 @@
 [package]
-name = "numliterals"
+name = "numeric_literals"
 version = "0.1.0"
 authors = ["Andreas Longva <andreas.b.longva@gmail.com>"]
 edition = "2018"
