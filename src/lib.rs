@@ -56,12 +56,12 @@ use syn::punctuated::Pair;
 /// Visit an expression and replaces any numeric literal
 /// with the replacement expression, in which a placeholder identifier
 /// is replaced with the numeric literal.
-struct NumericLiteralVisitor {
-    pub placeholder: String,
-    pub replacement: Expr,
+struct NumericLiteralVisitor<'a> {
+    pub placeholder: &'a str,
+    pub replacement: &'a Expr,
 }
 
-impl VisitMut for NumericLiteralVisitor {
+impl<'a> VisitMut for NumericLiteralVisitor<'a> {
     fn visit_expr_mut(&mut self, expr: &mut Expr) {
         if let Expr::Lit(lit_expr) = expr {
             match lit_expr.lit {
@@ -71,8 +71,8 @@ impl VisitMut for NumericLiteralVisitor {
                 Lit::Int(_) | Lit::Float(_) => {
                     let mut adapted_replacement = self.replacement.clone();
                     let mut replacer = ReplacementExpressionVisitor {
-                        placeholder: self.placeholder.clone(),
-                        literal: lit_expr.clone(),
+                        placeholder: self.placeholder,
+                        literal: lit_expr,
                     };
 
                     replacer.visit_expr_mut(&mut adapted_replacement);
@@ -88,12 +88,12 @@ impl VisitMut for NumericLiteralVisitor {
 
 /// Visits the "replacement expression", which replaces a placeholder identifier
 /// with the given literal.
-struct ReplacementExpressionVisitor {
-    pub placeholder: String,
-    pub literal: ExprLit,
+struct ReplacementExpressionVisitor<'a> {
+    pub placeholder: &'a str,
+    pub literal: &'a ExprLit,
 }
 
-impl VisitMut for ReplacementExpressionVisitor {
+impl<'a> VisitMut for ReplacementExpressionVisitor<'a> {
     fn visit_expr_mut(&mut self, expr: &mut Expr) {
         if let Expr::Path(path_expr) = expr {
             if let Some(last_pair) = path_expr.path.segments.last() {
@@ -118,8 +118,8 @@ pub fn replace_numeric_literals(attr: TokenStream, item: TokenStream) -> TokenSt
     let attributes_tree = parse_macro_input!(attr as Expr);
 
     let mut replacer = NumericLiteralVisitor {
-        placeholder: "literal".to_string(),
-        replacement: attributes_tree,
+        placeholder: "literal",
+        replacement: &attributes_tree,
     };
     replacer.visit_item_mut(&mut input);
 
