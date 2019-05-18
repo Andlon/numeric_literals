@@ -1,11 +1,11 @@
-extern crate numeric_literals;
 extern crate num;
+extern crate numeric_literals;
 
-use numeric_literals::replace_numeric_literals;
 use num::Float;
+use numeric_literals::replace_numeric_literals;
 
 fn golden_ratio_vanilla<T: Float>() -> T {
-    ( T::one() + T::sqrt(T::from(5).unwrap())) / T::from(2).unwrap()
+    (T::one() + T::sqrt(T::from(5).unwrap())) / T::from(2).unwrap()
 }
 
 #[replace_numeric_literals(T::from(literal).expect("Literal must fit in T"))]

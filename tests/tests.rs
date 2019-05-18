@@ -93,7 +93,8 @@ fn converts_generic_with_from() {
 fn converts_generic_arithmetic_with_from() {
     #[replace_numeric_literals(T::from(literal))]
     fn gen<T>() -> T
-        where T: From<i8> + Add<T, Output=T>
+    where
+        T: From<i8> + Add<T, Output = T>,
     {
         3 + 2
     }
