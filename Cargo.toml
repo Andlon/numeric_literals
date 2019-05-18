@@ -13,3 +13,6 @@ quote = "0.6"
 [dependencies.syn]
 version = "0.15"
 features = ["visit-mut", "full"]
+
+[dev-dependencies]
+num = "0.2.0"
