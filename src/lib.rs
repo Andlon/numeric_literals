@@ -58,7 +58,54 @@ use syn::punctuated::Pair;
 /// is replaced with the numeric literal.
 struct NumericLiteralVisitor<'a> {
     pub placeholder: &'a str,
+    pub float_replacement: &'a Expr,
+    pub int_replacement: &'a Expr,
+}
+
+struct FloatLiteralVisitor<'a> {
+    pub placeholder: &'a str,
     pub replacement: &'a Expr,
+}
+
+struct IntLiteralVisitor<'a> {
+    pub placeholder: &'a str,
+    pub replacement: &'a Expr,
+}
+
+fn replace_literal(expr: &mut Expr, placeholder: &str, literal: &ExprLit) {
+    let mut replacer = ReplacementExpressionVisitor {
+        placeholder,
+        literal,
+    };
+    replacer.visit_expr_mut(expr);
+}
+
+impl<'a> VisitMut for FloatLiteralVisitor<'a> {
+    fn visit_expr_mut(&mut self, expr: &mut Expr) {
+        if let Expr::Lit(lit_expr) = expr {
+            if let Lit::Float(_) = lit_expr.lit {
+                let mut adapted_replacement = self.replacement.clone();
+                replace_literal(&mut adapted_replacement, self.placeholder, lit_expr);
+                *expr = adapted_replacement;
+                return;
+            }
+        }
+        visit_expr_mut(self, expr)
+    }
+}
+
+impl<'a> VisitMut for IntLiteralVisitor<'a> {
+    fn visit_expr_mut(&mut self, expr: &mut Expr) {
+        if let Expr::Lit(lit_expr) = expr {
+            if let Lit::Int(_) = lit_expr.lit {
+                let mut adapted_replacement = self.replacement.clone();
+                replace_literal(&mut adapted_replacement, self.placeholder, lit_expr);
+                *expr = adapted_replacement;
+                return;
+            }
+        }
+        visit_expr_mut(self, expr)
+    }
 }
 
 impl<'a> VisitMut for NumericLiteralVisitor<'a> {
@@ -68,17 +115,22 @@ impl<'a> VisitMut for NumericLiteralVisitor<'a> {
                 // TODO: Currently we cannot correctly treat integers that don't fit in 64
                 // bits. For this we'd have to deal with verbatim literals and manually
                 // parse the string
-                Lit::Int(_) | Lit::Float(_) => {
-                    let mut adapted_replacement = self.replacement.clone();
-                    let mut replacer = ReplacementExpressionVisitor {
+                Lit::Int(_) => {
+                    let mut visitor = IntLiteralVisitor {
                         placeholder: self.placeholder,
-                        literal: lit_expr,
+                        replacement: self.int_replacement
                     };
-
-                    replacer.visit_expr_mut(&mut adapted_replacement);
-                    *expr = adapted_replacement;
+                    visitor.visit_expr_mut(expr);
                     return;
-                }
+                },
+                Lit::Float(_) => {
+                    let mut visitor = FloatLiteralVisitor {
+                        placeholder: self.placeholder,
+                        replacement: self.float_replacement
+                    };
+                    visitor.visit_expr_mut(expr);
+                    return;
+                },
                 _ => {}
             }
         }
@@ -118,6 +170,45 @@ pub fn replace_numeric_literals(attr: TokenStream, item: TokenStream) -> TokenSt
     let attributes_tree = parse_macro_input!(attr as Expr);
 
     let mut replacer = NumericLiteralVisitor {
+        placeholder: "literal",
+        int_replacement: &attributes_tree,
+        float_replacement: &attributes_tree
+    };
+    replacer.visit_item_mut(&mut input);
+
+    let expanded = quote! { #input };
+
+    TokenStream::from(expanded)
+}
+
+/// Replace any float literal with custom transformation code.
+///
+/// Refer to the documentation at the root of the crate for usage instructions.
+#[proc_macro_attribute]
+pub fn replace_float_literals(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut input = parse_macro_input!(item as Item);
+    let attributes_tree = parse_macro_input!(attr as Expr);
+
+    let mut replacer = FloatLiteralVisitor {
+        placeholder: "literal",
+        replacement: &attributes_tree,
+    };
+    replacer.visit_item_mut(&mut input);
+
+    let expanded = quote! { #input };
+
+    TokenStream::from(expanded)
+}
+
+/// Replace any integer literal with custom transformation code.
+///
+/// Refer to the documentation at the root of the crate for usage instructions.
+#[proc_macro_attribute]
+pub fn replace_int_literals(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut input = parse_macro_input!(item as Item);
+    let attributes_tree = parse_macro_input!(attr as Expr);
+
+    let mut replacer = IntLiteralVisitor {
         placeholder: "literal",
         replacement: &attributes_tree,
     };

@@ -1,6 +1,6 @@
 extern crate numeric_literals;
 
-use numeric_literals::replace_numeric_literals;
+use numeric_literals::{replace_numeric_literals, replace_int_literals, replace_float_literals};
 use std::ops::Add;
 
 #[test]
@@ -51,6 +51,26 @@ fn leaves_raw_untouched() {
     }
 
     assert_eq!(gen_raw(), r#"test"#);
+}
+
+#[test]
+fn leaves_float_alone_when_integers_transformed() {
+    #[replace_int_literals(())]
+    fn gen() -> ((), f32) {
+        (3, 3.0)
+    }
+
+    assert_eq!(gen(), ((), 3.0f32));
+}
+
+#[test]
+fn leaves_integers_alone_when_floats_transformed() {
+    #[replace_float_literals(())]
+    fn gen() -> (i32, ()) {
+        (3, 3.0)
+    }
+
+    assert_eq!(gen(), (3i32, ()));
 }
 
 #[test]
