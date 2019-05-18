@@ -124,8 +124,7 @@ pub fn replace_numeric_literals(attr: TokenStream, item: TokenStream) -> TokenSt
     let attributes_tree = parse_macro_input!(attr as Expr);
 
     let mut replacer = NumericLiteralVisitor { placeholder: "literal".to_string(), replacement: attributes_tree };
-
-    visit_item_mut(&mut replacer, &mut input);
+    replacer.visit_item_mut(&mut input);
 
     let expanded = quote!{ #input };
 
