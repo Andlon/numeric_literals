@@ -47,7 +47,7 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 
-use syn::visit_mut::{visit_expr_mut, visit_item_mut, VisitMut};
+use syn::visit_mut::{visit_expr_mut, VisitMut};
 use syn::{parse_macro_input, Expr, ExprLit, Item, Lit};
 
 use quote::quote;
@@ -63,27 +63,24 @@ struct NumericLiteralVisitor {
 
 impl VisitMut for NumericLiteralVisitor {
     fn visit_expr_mut(&mut self, expr: &mut Expr) {
-        match expr {
-            Expr::Lit(lit_expr) => {
-                match lit_expr.lit {
-                    // TODO: Currently we cannot correctly treat integers that don't fit in 64
-                    // bits. For this we'd have to deal with verbatim literals and manually
-                    // parse the string
-                    Lit::Int(_) | Lit::Float(_) => {
-                        let mut adapted_replacement = self.replacement.clone();
-                        let mut replacer = ReplacementExpressionVisitor {
-                            placeholder: self.placeholder.clone(),
-                            literal: lit_expr.clone(),
-                        };
+        if let Expr::Lit(lit_expr) = expr {
+            match lit_expr.lit {
+                // TODO: Currently we cannot correctly treat integers that don't fit in 64
+                // bits. For this we'd have to deal with verbatim literals and manually
+                // parse the string
+                Lit::Int(_) | Lit::Float(_) => {
+                    let mut adapted_replacement = self.replacement.clone();
+                    let mut replacer = ReplacementExpressionVisitor {
+                        placeholder: self.placeholder.clone(),
+                        literal: lit_expr.clone(),
+                    };
 
-                        replacer.visit_expr_mut(&mut adapted_replacement);
-                        *expr = adapted_replacement;
-                        return;
-                    }
-                    _ => {}
+                    replacer.visit_expr_mut(&mut adapted_replacement);
+                    *expr = adapted_replacement;
+                    return;
                 }
+                _ => {}
             }
-            _ => {}
         }
         visit_expr_mut(self, expr)
     }
@@ -98,18 +95,15 @@ struct ReplacementExpressionVisitor {
 
 impl VisitMut for ReplacementExpressionVisitor {
     fn visit_expr_mut(&mut self, expr: &mut Expr) {
-        match expr {
-            Expr::Path(path_expr) => {
-                if let Some(last_pair) = path_expr.path.segments.last() {
-                    if let Pair::End(segment) = last_pair {
-                        if segment.ident.to_string() == self.placeholder {
-                            *expr = Expr::Lit(self.literal.clone());
-                            return;
-                        }
+        if let Expr::Path(path_expr) = expr {
+            if let Some(last_pair) = path_expr.path.segments.last() {
+                if let Pair::End(segment) = last_pair {
+                    if segment.ident == self.placeholder {
+                        *expr = Expr::Lit(self.literal.clone());
+                        return;
                     }
                 }
             }
-            _ => {}
         }
         visit_expr_mut(self, expr)
     }
