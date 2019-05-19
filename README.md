@@ -55,7 +55,7 @@ but only trigger on float or integer literals, respectively. Below is an example
 Finite Element code that uses float literal replacement to improve readability of numerical
 constants in generic code.
 
-```ignore
+```rust
 #[replace_float_literals(T::from_f64(literal).expect("Literal must fit in T"))]
 pub fn assemble_element_mass<T>(quad: &Quad2d<T>) -> MatrixN<T, U8>
 where
