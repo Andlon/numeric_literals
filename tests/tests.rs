@@ -1,6 +1,6 @@
 extern crate numeric_literals;
 
-use numeric_literals::{replace_numeric_literals, replace_int_literals, replace_float_literals};
+use numeric_literals::{replace_float_literals, replace_int_literals, replace_numeric_literals};
 use std::ops::Add;
 
 #[test]

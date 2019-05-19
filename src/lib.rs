@@ -156,19 +156,19 @@ impl<'a> VisitMut for NumericLiteralVisitor<'a> {
                 Lit::Int(_) => {
                     let mut visitor = IntLiteralVisitor {
                         placeholder: self.placeholder,
-                        replacement: self.int_replacement
+                        replacement: self.int_replacement,
                     };
                     visitor.visit_expr_mut(expr);
                     return;
-                },
+                }
                 Lit::Float(_) => {
                     let mut visitor = FloatLiteralVisitor {
                         placeholder: self.placeholder,
-                        replacement: self.float_replacement
+                        replacement: self.float_replacement,
                     };
                     visitor.visit_expr_mut(expr);
                     return;
-                },
+                }
                 _ => {}
             }
         }
@@ -210,7 +210,7 @@ pub fn replace_numeric_literals(attr: TokenStream, item: TokenStream) -> TokenSt
     let mut replacer = NumericLiteralVisitor {
         placeholder: "literal",
         int_replacement: &attributes_tree,
-        float_replacement: &attributes_tree
+        float_replacement: &attributes_tree,
     };
     replacer.visit_item_mut(&mut input);
 
