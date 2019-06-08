@@ -22,7 +22,6 @@ This is arguably very messy for such a simple task. With `numeric_literals`, we 
 instead write:
 
 ```rust
-# use num::Float;
 use numeric_literals::replace_numeric_literals;
 
 #[replace_numeric_literals(T::from(literal).unwrap())]
