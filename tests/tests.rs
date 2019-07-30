@@ -96,11 +96,18 @@ fn converts_floats_to_i32() {
 #[test]
 fn converts_vec_floats_to_i32() {
     #[replace_float_literals(literal as i32)]
-    fn gen_i32_vec() -> Vec<i32> {
+    fn gen_i32_vec_1() -> Vec<i32> {
         vec![3.2, 5.7, 10.1]
     }
 
-    assert_eq!(gen_i32_vec(), vec![3, 5, 10]);
+    assert_eq!(gen_i32_vec_1(), vec![3, 5, 10]);
+
+    #[replace_float_literals(literal as i32)]
+    fn gen_i32_vec_2() -> Vec<i32> {
+        vec![2.99; 4]
+    }
+
+    assert_eq!(gen_i32_vec_2(), vec![2, 2, 2, 2]);
 }
 
 #[test]
@@ -128,6 +135,32 @@ fn converts_vec_numeric() {
     }
 
     assert_eq!(gen_f64_vec(), vec![1.5, 0.5, 4.5]);
+}
+
+#[test]
+fn converts_assert_eq_floats_to_i32() {
+    #[replace_float_literals(literal as i32)]
+    fn assert_eq_test() -> bool {
+        assert_eq!(1.1, 1);
+        assert_eq!(2.6, 2);
+        assert_eq!(10.99, 10);
+        true
+    }
+
+    assert_eq_test();
+}
+
+#[test]
+fn converts_assert_floats_to_i32() {
+    #[replace_float_literals(literal as i32)]
+    fn assert_test() -> bool {
+        assert!(1.1 == 1);
+        assert!(2.6 == 2);
+        assert!(10.99 == 10);
+        true
+    }
+
+    assert_test();
 }
 
 #[test]
