@@ -86,9 +86,10 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 
 use syn::visit_mut::{visit_expr_mut, VisitMut};
-use syn::{parse_macro_input, Expr, ExprLit, Item, Lit};
+use syn::{parse_macro_input, Expr, ExprLit, Item, Lit, Macro, Token};
 
-use quote::quote;
+use quote::{quote, ToTokens};
+use syn::punctuated::{Pair, Punctuated};
 
 /// Visit an expression and replaces any numeric literal
 /// with the replacement expression, in which a placeholder identifier
@@ -117,6 +118,18 @@ fn replace_literal(expr: &mut Expr, placeholder: &str, literal: &ExprLit) {
     replacer.visit_expr_mut(expr);
 }
 
+fn visit_punctuated_macro_mut<V: VisitMut>(visitor: &mut V, mac: &mut Macro) {
+    let parser = Punctuated::<Expr, Token![,]>::parse_terminated;
+    if let Ok(mut exprs) = mac.parse_body_with(parser) {
+        for expr in exprs.iter_mut() {
+            visitor.visit_expr_mut(expr);
+        }
+
+        let stream = exprs.into_token_stream();
+        mac.tts = stream;
+    }
+}
+
 impl<'a> VisitMut for FloatLiteralVisitor<'a> {
     fn visit_expr_mut(&mut self, expr: &mut Expr) {
         if let Expr::Lit(lit_expr) = expr {
@@ -128,6 +141,10 @@ impl<'a> VisitMut for FloatLiteralVisitor<'a> {
             }
         }
         visit_expr_mut(self, expr)
+    }
+
+    fn visit_macro_mut(&mut self, mac: &mut Macro) {
+        visit_punctuated_macro_mut(self, mac);
     }
 }
 
@@ -142,6 +159,10 @@ impl<'a> VisitMut for IntLiteralVisitor<'a> {
             }
         }
         visit_expr_mut(self, expr)
+    }
+
+    fn visit_macro_mut(&mut self, mac: &mut Macro) {
+        visit_punctuated_macro_mut(self, mac);
     }
 }
 
@@ -172,6 +193,10 @@ impl<'a> VisitMut for NumericLiteralVisitor<'a> {
             }
         }
         visit_expr_mut(self, expr)
+    }
+
+    fn visit_macro_mut(&mut self, mac: &mut Macro) {
+        visit_punctuated_macro_mut(self, mac);
     }
 }
 
