@@ -18,7 +18,7 @@ quote = "1.0"
 [dependencies.syn]
 version = "1.0"
 default-features = false
-features = ["visit-mut", "printing", "full", "parsing", "proc-macro", "clone-impls"]
+features = ["visit", "visit-mut", "printing", "full", "parsing", "proc-macro", "clone-impls"]
 
 [dev-dependencies]
 num = "0.2.0"

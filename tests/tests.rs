@@ -147,7 +147,7 @@ fn converts_assert_eq_floats_to_i32() {
         true
     }
 
-    assert_eq_test();
+    assert!(assert_eq_test());
 }
 
 #[test]
@@ -160,7 +160,7 @@ fn converts_assert_floats_to_i32() {
         true
     }
 
-    assert_test();
+    assert!(assert_test());
 }
 
 #[test]
