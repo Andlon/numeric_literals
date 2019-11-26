@@ -13,10 +13,10 @@ categories = ["rust-patterns"]
 proc-macro = true
 
 [dependencies]
-quote = "0.6"
+quote = "1.0"
 
 [dependencies.syn]
-version = "0.15"
+version = "1.0"
 default-features = false
 features = ["visit-mut", "printing", "full", "parsing", "proc-macro", "clone-impls"]
 

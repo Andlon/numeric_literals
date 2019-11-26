@@ -89,7 +89,6 @@ use syn::visit_mut::{visit_expr_mut, VisitMut};
 use syn::{parse_macro_input, Expr, ExprLit, Item, Lit};
 
 use quote::quote;
-use syn::punctuated::Pair;
 
 /// Visit an expression and replaces any numeric literal
 /// with the replacement expression, in which a placeholder identifier
@@ -186,12 +185,10 @@ struct ReplacementExpressionVisitor<'a> {
 impl<'a> VisitMut for ReplacementExpressionVisitor<'a> {
     fn visit_expr_mut(&mut self, expr: &mut Expr) {
         if let Expr::Path(path_expr) = expr {
-            if let Some(last_pair) = path_expr.path.segments.last() {
-                if let Pair::End(segment) = last_pair {
-                    if segment.ident == self.placeholder {
-                        *expr = Expr::Lit(self.literal.clone());
-                        return;
-                    }
+            if let Some(last_segment) = path_expr.path.segments.last() {
+                if last_segment.ident == self.placeholder {
+                    *expr = Expr::Lit(self.literal.clone());
+                    return;
                 }
             }
         }
