@@ -140,27 +140,63 @@ fn converts_vec_numeric() {
 #[test]
 fn converts_assert_eq_floats_to_i32() {
     #[replace_float_literals(literal as i32)]
-    fn assert_eq_test() -> bool {
+    fn assert_eq_test() {
         assert_eq!(1.1, 1);
         assert_eq!(2.6, 2);
         assert_eq!(10.99, 10);
-        true
     }
 
-    assert!(assert_eq_test());
+    assert_eq_test();
 }
 
 #[test]
 fn converts_assert_floats_to_i32() {
     #[replace_float_literals(literal as i32)]
-    fn assert_test() -> bool {
+    fn assert_test() {
         assert!(1.1 == 1);
         assert!(2.6 == 2);
         assert!(10.99 == 10);
-        true
     }
 
-    assert!(assert_test());
+    assert_test();
+}
+
+#[test]
+fn disable_macro_visiting() {
+    #[replace_float_literals(literal as i32, visit_macros = false)]
+    fn assert_test() {
+        assert!(1.1 != 1.0);
+        assert!(2.6 != 2.0);
+        assert!(10.99 != 10.0);
+    }
+
+    assert_test();
+
+    #[replace_numeric_literals(literal as i32,visit_macros=false )]
+    fn gen_i32_vec() -> Vec<f64> {
+        vec![3.2, 5.7, 10.1]
+    }
+
+    assert_eq!(gen_i32_vec(), vec![3.2, 5.7, 10.1]);
+}
+
+#[test]
+fn enable_macro_visiting() {
+    #[replace_float_literals(literal as i32, visit_macros = true)]
+    fn assert_test() {
+        assert!(1.1 == 1);
+        assert!(2.6 == 2);
+        assert!(10.99 == 10);
+    }
+
+    assert_test();
+
+    #[replace_numeric_literals(literal as i32,visit_macros=true )]
+    fn gen_i32_vec() -> Vec<i32> {
+        vec![3.2, 5.7, 10.1]
+    }
+
+    assert_eq!(gen_i32_vec(), vec![3, 5, 10]);
 }
 
 #[test]
