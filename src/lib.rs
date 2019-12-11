@@ -85,26 +85,34 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 
+use syn::parse::Parser;
+use syn::punctuated::Punctuated;
+use syn::visit::Visit;
 use syn::visit_mut::{visit_expr_mut, VisitMut};
-use syn::{parse_macro_input, Expr, ExprLit, Item, Lit};
+use syn::{
+    parse_macro_input, Expr, ExprAssign, ExprLit, ExprPath, Item, Lit, LitBool, Macro, Token,
+};
 
-use quote::quote;
+use quote::{quote, ToTokens};
 
 /// Visit an expression and replaces any numeric literal
 /// with the replacement expression, in which a placeholder identifier
 /// is replaced with the numeric literal.
 struct NumericLiteralVisitor<'a> {
+    pub parameters: MacroParameters,
     pub placeholder: &'a str,
     pub float_replacement: &'a Expr,
     pub int_replacement: &'a Expr,
 }
 
 struct FloatLiteralVisitor<'a> {
+    pub parameters: MacroParameters,
     pub placeholder: &'a str,
     pub replacement: &'a Expr,
 }
 
 struct IntLiteralVisitor<'a> {
+    pub parameters: MacroParameters,
     pub placeholder: &'a str,
     pub replacement: &'a Expr,
 }
@@ -115,6 +123,42 @@ fn replace_literal(expr: &mut Expr, placeholder: &str, literal: &ExprLit) {
         literal,
     };
     replacer.visit_expr_mut(expr);
+}
+
+fn try_parse_punctuated_macro<P: ToTokens, V: VisitMut, F: Parser<Output = Punctuated<Expr, P>>>(
+    visitor: &mut V,
+    mac: &mut Macro,
+    parser: F,
+) -> bool {
+    if let Ok(mut exprs) = mac.parse_body_with(parser) {
+        exprs
+            .iter_mut()
+            .for_each(|expr| visitor.visit_expr_mut(expr));
+        mac.tokens = exprs.into_token_stream();
+        return true;
+    }
+    return false;
+}
+
+fn visit_macros_mut<V: VisitMut>(visitor: &mut V, mac: &mut Macro) {
+    // Handle expression based macros (e.g. assert)
+    if let Ok(mut expr) = mac.parse_body::<Expr>() {
+        visitor.visit_expr_mut(&mut expr);
+        mac.tokens = expr.into_token_stream();
+        return;
+    }
+
+    // Handle , punctuation based macros (e.g. vec with list, assert_eq)
+    let parser_comma = Punctuated::<Expr, Token![,]>::parse_terminated;
+    if try_parse_punctuated_macro(visitor, mac, parser_comma) {
+        return;
+    }
+
+    // Handle ; punctuation based macros (e.g. vec with repeat)
+    let parser_semicolon = Punctuated::<Expr, Token![;]>::parse_terminated;
+    if try_parse_punctuated_macro(visitor, mac, parser_semicolon) {
+        return;
+    }
 }
 
 impl<'a> VisitMut for FloatLiteralVisitor<'a> {
@@ -128,6 +172,12 @@ impl<'a> VisitMut for FloatLiteralVisitor<'a> {
             }
         }
         visit_expr_mut(self, expr)
+    }
+
+    fn visit_macro_mut(&mut self, mac: &mut Macro) {
+        if self.parameters.visit_macros {
+            visit_macros_mut(self, mac);
+        }
     }
 }
 
@@ -143,6 +193,12 @@ impl<'a> VisitMut for IntLiteralVisitor<'a> {
         }
         visit_expr_mut(self, expr)
     }
+
+    fn visit_macro_mut(&mut self, mac: &mut Macro) {
+        if self.parameters.visit_macros {
+            visit_macros_mut(self, mac);
+        }
+    }
 }
 
 impl<'a> VisitMut for NumericLiteralVisitor<'a> {
@@ -154,6 +210,7 @@ impl<'a> VisitMut for NumericLiteralVisitor<'a> {
                 // parse the string
                 Lit::Int(_) => {
                     let mut visitor = IntLiteralVisitor {
+                        parameters: self.parameters,
                         placeholder: self.placeholder,
                         replacement: self.int_replacement,
                     };
@@ -162,6 +219,7 @@ impl<'a> VisitMut for NumericLiteralVisitor<'a> {
                 }
                 Lit::Float(_) => {
                     let mut visitor = FloatLiteralVisitor {
+                        parameters: self.parameters,
                         placeholder: self.placeholder,
                         replacement: self.float_replacement,
                     };
@@ -172,6 +230,12 @@ impl<'a> VisitMut for NumericLiteralVisitor<'a> {
             }
         }
         visit_expr_mut(self, expr)
+    }
+
+    fn visit_macro_mut(&mut self, mac: &mut Macro) {
+        if self.parameters.visit_macros {
+            visit_macros_mut(self, mac);
+        }
     }
 }
 
@@ -196,18 +260,115 @@ impl<'a> VisitMut for ReplacementExpressionVisitor<'a> {
     }
 }
 
+struct MacroParameterVisitor {
+    pub name: Option<String>,
+    pub value: Option<ParameterValue>,
+}
+
+impl MacroParameterVisitor {
+    fn parse_flag(expr: &Expr) -> Option<(String, ParameterValue)> {
+        let mut visitor = MacroParameterVisitor {
+            name: None,
+            value: None,
+        };
+        visitor.visit_expr(expr);
+        let name = visitor.name.take();
+        let value = visitor.value.take();
+        name.and_then(|n| value.and_then(|v| Some((n, v))))
+    }
+}
+
+impl<'ast> Visit<'ast> for MacroParameterVisitor {
+    fn visit_expr_assign(&mut self, expr: &'ast ExprAssign) {
+        self.visit_expr(&expr.left);
+        self.visit_expr(&expr.right);
+    }
+
+    fn visit_expr_path(&mut self, expr: &'ast ExprPath) {
+        let mut name = Vec::new();
+        expr.path
+            .leading_colon
+            .map(|_| name.push(String::from("::")));
+        for p in expr.path.segments.pairs() {
+            match p {
+                syn::punctuated::Pair::Punctuated(ps, _sep) => {
+                    name.push(ps.ident.to_string());
+                    name.push(String::from("::"));
+                }
+                syn::punctuated::Pair::End(ps) => {
+                    name.push(ps.ident.to_string());
+                }
+            }
+        }
+        self.name = Some(name.concat());
+    }
+
+    fn visit_lit_bool(&mut self, expr: &'ast LitBool) {
+        self.value = Some(ParameterValue::Bool(expr.value));
+    }
+}
+
+enum ParameterValue {
+    Bool(bool),
+}
+
+#[derive(Copy, Clone)]
+struct MacroParameters {
+    pub visit_macros: bool,
+}
+
+impl Default for MacroParameters {
+    fn default() -> Self {
+        Self { visit_macros: true }
+    }
+}
+
+impl MacroParameters {
+    fn set(&mut self, name: &str, value: ParameterValue) {
+        match name {
+            "visit_macros" => match value {
+                ParameterValue::Bool(v) => self.visit_macros = v,
+            },
+            _ => {}
+        }
+    }
+}
+
+/// Obtain the replacement expression and parameters from the macro attr token stream.
+fn parse_macro_attribute(attr: TokenStream) -> Result<(Expr, MacroParameters), syn::Error> {
+    let parser = Punctuated::<Expr, Token![,]>::parse_separated_nonempty;
+    let attributes = parser.parse(attr)?;
+
+    let mut attr_iter = attributes.into_iter();
+    let replacement = attr_iter.next().expect("No replacement provided");
+
+    let user_parameters: Vec<_> = attr_iter
+        .filter_map(|expr| MacroParameterVisitor::parse_flag(&expr))
+        .collect();
+    let mut parameters = MacroParameters::default();
+    for (name, value) in user_parameters {
+        parameters.set(&name, value);
+    }
+
+    Ok((replacement, parameters))
+}
+
 /// Replace any numeric literal with custom transformation code.
 ///
 /// Refer to the documentation at the root of the crate for usage instructions.
 #[proc_macro_attribute]
 pub fn replace_numeric_literals(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut input = parse_macro_input!(item as Item);
-    let attributes_tree = parse_macro_input!(attr as Expr);
+    let (replacement, parameters) = match parse_macro_attribute(attr) {
+        Ok(res) => res,
+        Err(err) => return TokenStream::from(err.to_compile_error()),
+    };
 
     let mut replacer = NumericLiteralVisitor {
+        parameters,
         placeholder: "literal",
-        int_replacement: &attributes_tree,
-        float_replacement: &attributes_tree,
+        int_replacement: &replacement,
+        float_replacement: &replacement,
     };
     replacer.visit_item_mut(&mut input);
 
@@ -222,11 +383,15 @@ pub fn replace_numeric_literals(attr: TokenStream, item: TokenStream) -> TokenSt
 #[proc_macro_attribute]
 pub fn replace_float_literals(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut input = parse_macro_input!(item as Item);
-    let attributes_tree = parse_macro_input!(attr as Expr);
+    let (replacement, parameters) = match parse_macro_attribute(attr) {
+        Ok(res) => res,
+        Err(err) => return TokenStream::from(err.to_compile_error()),
+    };
 
     let mut replacer = FloatLiteralVisitor {
+        parameters,
         placeholder: "literal",
-        replacement: &attributes_tree,
+        replacement: &replacement,
     };
     replacer.visit_item_mut(&mut input);
 
@@ -241,11 +406,15 @@ pub fn replace_float_literals(attr: TokenStream, item: TokenStream) -> TokenStre
 #[proc_macro_attribute]
 pub fn replace_int_literals(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut input = parse_macro_input!(item as Item);
-    let attributes_tree = parse_macro_input!(attr as Expr);
+    let (replacement, parameters) = match parse_macro_attribute(attr) {
+        Ok(res) => res,
+        Err(err) => return TokenStream::from(err.to_compile_error()),
+    };
 
     let mut replacer = IntLiteralVisitor {
+        parameters,
         placeholder: "literal",
-        replacement: &attributes_tree,
+        replacement: &replacement,
     };
     replacer.visit_item_mut(&mut input);
 

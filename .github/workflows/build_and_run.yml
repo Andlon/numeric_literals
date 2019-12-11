@@ -1,0 +1,52 @@
+name: build and run tests
+
+on:
+  # Trigger the workflow on push or pull request,
+  # but only for the master branch
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build_ubuntu:
+
+    name: Test on Ubuntu
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Update Rust
+      run: rustup update
+
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test
+    - name: Run tests (release)
+      run: cargo test --release
+
+  build_windows:
+
+    name: Test on Windows
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Update Rust
+        run: rustup update
+        shell: pwsh
+
+      - name: Build
+        run: cargo build --verbose
+        shell: pwsh
+      - name: Run tests
+        run: cargo test
+        shell: pwsh
+      - name: Run tests (release)
+        run: cargo test --release
+        shell: pwsh

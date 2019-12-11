@@ -1,6 +1,8 @@
 numeric_literals
 ================
 
+[![Build Status](https://github.com/Andlon/numeric_literals/workflows/build%20and%20run%20tests/badge.svg)](https://github.com/Andlon/numeric_literals/actions)
+
 **numeric_literals** is a Rust library that provides procedural attribute macros for replacing
 numeric literals with arbitrary expressions.
 
