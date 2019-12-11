@@ -149,13 +149,13 @@ fn visit_macros_mut<V: VisitMut>(visitor: &mut V, mac: &mut Macro) {
     }
 
     // Handle , punctuation based macros (e.g. vec with list, assert_eq)
-    let parser_comma = Punctuated::<Expr, Token![,]>::parse_separated_nonempty;
+    let parser_comma = Punctuated::<Expr, Token![,]>::parse_terminated;
     if try_parse_punctuated_macro(visitor, mac, parser_comma) {
         return;
     }
 
     // Handle ; punctuation based macros (e.g. vec with repeat)
-    let parser_semicolon = Punctuated::<Expr, Token![;]>::parse_separated_nonempty;
+    let parser_semicolon = Punctuated::<Expr, Token![;]>::parse_terminated;
     if try_parse_punctuated_macro(visitor, mac, parser_semicolon) {
         return;
     }

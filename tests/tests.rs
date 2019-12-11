@@ -138,6 +138,27 @@ fn converts_vec_numeric() {
 }
 
 #[test]
+fn converts_vec_trailing_comma() {
+    #[replace_numeric_literals(literal as i32)]
+    fn gen_i32_vec() -> Vec<i32> {
+        vec![3.2, 5.7, 10.1,]
+    }
+
+    assert_eq!(gen_i32_vec(), vec![3, 5, 10]);
+
+    #[replace_numeric_literals(literal as f64)]
+    fn gen_f64_vec() -> Vec<f64> {
+        vec![
+            3 / 2, 
+            1 / 2, 
+            9 / 2, 
+        ]
+    }
+
+    assert_eq!(gen_f64_vec(), vec![1.5, 0.5, 4.5]);
+}
+
+#[test]
 fn converts_assert_eq_floats_to_i32() {
     #[replace_float_literals(literal as i32)]
     fn assert_eq_test() {
