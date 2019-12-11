@@ -86,7 +86,7 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 
 use syn::parse::Parser;
-use syn::punctuated::{Pair, Punctuated};
+use syn::punctuated::Punctuated;
 use syn::visit::Visit;
 use syn::visit_mut::{visit_expr_mut, VisitMut};
 use syn::{
@@ -134,7 +134,7 @@ fn try_parse_punctuated_macro<P: ToTokens, V: VisitMut, F: Parser<Output = Punct
         exprs
             .iter_mut()
             .for_each(|expr| visitor.visit_expr_mut(expr));
-        mac.tts = exprs.into_token_stream();
+        mac.tokens = exprs.into_token_stream();
         return true;
     }
     return false;
@@ -144,7 +144,7 @@ fn visit_macros_mut<V: VisitMut>(visitor: &mut V, mac: &mut Macro) {
     // Handle expression based macros (e.g. assert)
     if let Ok(mut expr) = mac.parse_body::<Expr>() {
         visitor.visit_expr_mut(&mut expr);
-        mac.tts = expr.into_token_stream();
+        mac.tokens = expr.into_token_stream();
         return;
     }
 
