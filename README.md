@@ -1,6 +1,8 @@
 numeric_literals
 ================
 
+[![On crates.io](https://img.shields.io/crates/v/numeric_literals)](https://crates.io/crates/numeric_literals)
+[![On docs.rs](https://docs.rs/numeric_literals/badge.svg)](https://docs.rs/numeric_literals)
 [![Build Status](https://github.com/Andlon/numeric_literals/workflows/build%20and%20run%20tests/badge.svg)](https://github.com/Andlon/numeric_literals/actions)
 
 **numeric_literals** is a Rust library that provides procedural attribute macros for replacing
