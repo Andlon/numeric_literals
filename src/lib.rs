@@ -25,7 +25,7 @@
 //!
 //! #[replace_numeric_literals(T::from(literal).unwrap())]
 //! fn golden_ratio<T: Float>() -> T {
-//!    (1 + T::sqrt(5)) / 2
+//!    (1 + 5.sqrt()) / 2
 //! }
 //! ```
 //!
@@ -70,6 +70,7 @@
 //!     let betas = [-1.0, -1.0, 1.0, 1.0];
 //!
 //!     // And so on...
+//! }
 //! ```
 //!
 //! In general, **the macros should be used with caution**. It is recommended to keep the macro close to
@@ -81,6 +82,42 @@
 //! An option for the future would be to apply the attribute only to very local blocks of code that
 //! are heavy on numerical constants. However, at present, Rust does not allow attribute macros
 //! to apply to blocks or single expressions.
+//!
+//! Replacement in macro invocations
+//! --------------------------------
+//! By default, the macros of this crate will also replace literals inside of macro invocations.
+//! This allows code such as the following to compile:
+//!
+//! ```rust
+//! use num::Float;
+//! use numeric_literals::replace_numeric_literals;
+//!
+//! #[replace_numeric_literals(T::from(literal).unwrap())]
+//! fn zeros<T: Float>(n: usize) -> Vec<T> {
+//!     vec![0.0; n]
+//! }
+//! ```
+//! If this behavior is unwanted, it is possible to disable replacement inside of macros with a
+//! parameter:
+//! ```ignore
+//! #[replace_numeric_literals(T::from(literal).unwrap()), visit_macros = false]
+//! ```
+//!
+//! Literals with suffixes
+//! ----------------------
+//! In rust, literal suffixes can be used to disambiguate the type of a literal. For example, the suffix `_f64`
+//! in the expression `1_f64.sqrt()` makes it clear that the value `1` is of type `f64`. This is also supported
+//! by the macros of this crate for all floating point and integer suffixes. For example:
+//!
+//! ```rust
+//! use num::Float;
+//! use numeric_literals::replace_numeric_literals;
+//!
+//! #[replace_numeric_literals(T::from(literal).unwrap())]
+//! fn golden_ratio<T: Float>() -> T {
+//!     (1.0_f64 + 5f32.sqrt()) / 2.0
+//! }
+//! ```
 
 extern crate proc_macro;
 use proc_macro::TokenStream;

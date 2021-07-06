@@ -24,11 +24,11 @@ This is arguably very messy for such a simple task. With `numeric_literals`, we 
 instead write:
 
 ```rust
+use num::Float;
 use numeric_literals::replace_numeric_literals;
-
 #[replace_numeric_literals(T::from(literal).unwrap())]
 fn golden_ratio<T: Float>() -> T {
-   (1 + T::sqrt(5)) / 2
+   (1 + 5.sqrt()) / 2
 }
 ```
 
@@ -45,7 +45,7 @@ by reducing the noise imposed by being explicit about the exact types involved.
 Float and integer literal replacement
 -------------------------------------
 
-An issue with the replacement of numeric literals is that there is no way to dinstinguish
+An issue with the replacement of numeric literals is that there is no way to distinguish
 literals that are used for e.g. indexing from those that are part of a numerical computation.
 In the example above, if you would additionally need to index into an array with a constant index
 such as `array[0]`, the macro will try to convert the index `0` to a float type, which
@@ -73,6 +73,7 @@ where
     let betas = [-1.0, -1.0, 1.0, 1.0];
 
     // And so on...
+}
 ```
 
 In general, **the macros should be used with caution**. It is recommended to keep the macro close to
@@ -80,10 +81,45 @@ the region in which the literals are being used, as to avoid confusion for reade
 The Rust code before macro expansion is usually not valid Rust (because of the lack of explicit
 type conversion), but without the context of the attribute, it is simply not clear why this
 code still compiles.
-
 An option for the future would be to apply the attribute only to very local blocks of code that
 are heavy on numerical constants. However, at present, Rust does not allow attribute macros
 to apply to blocks or single expressions.
+
+Replacement in macro invocations
+--------------------------------
+By default, the macros of this crate will also replace literals inside of macro invocations.
+This allows code such as the following to compile:
+
+```rust
+use num::Float;
+use numeric_literals::replace_numeric_literals;
+
+#[replace_numeric_literals(T::from(literal).unwrap())]
+fn zeros<T: Float>(n: usize) -> Vec<T> {
+    vec![0.0; n]
+}
+```
+If this behavior is unwanted, it is possible to disable replacement inside of macros with a
+parameter:
+```rust
+#[replace_numeric_literals(T::from(literal).unwrap()), visit_macros = false]
+```
+
+Literals with suffixes
+----------------------
+In rust, literal suffixes can be used to disambiguate the type of a literal. For example, the suffix `_f64`
+in the expression `1_f64.sqrt()` makes it clear that the value `1` is of type `f64`. This is also supported
+by the macros of this crate for all floating point and integer suffixes. For example:
+
+```rust
+use num::Float;
+use numeric_literals::replace_numeric_literals;
+
+#[replace_numeric_literals(T::from(literal).unwrap())]
+fn golden_ratio<T: Float>() -> T {
+   (1.0_f64 + 5f32.sqrt()) / 2.0
+}
+```
 
 License
 =======
