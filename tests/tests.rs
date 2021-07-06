@@ -138,6 +138,7 @@ fn converts_vec_numeric() {
 }
 
 #[test]
+#[rustfmt::skip]
 fn converts_vec_trailing_comma() {
     #[replace_numeric_literals(literal as i32)]
     fn gen_i32_vec() -> Vec<i32> {
@@ -253,4 +254,65 @@ fn converts_generic_arithmetic_with_from() {
     assert_eq!(gen::<i32>(), 5);
     assert_eq!(gen::<i64>(), 5);
     assert_eq!(gen::<i128>(), 5);
+}
+
+#[test]
+fn converts_suffixed_floats() {
+    fn add_10_f64(value: f64) -> i32 {
+        value as i32 + 10
+    }
+
+    #[replace_float_literals(add_10_f64(literal))]
+    fn test_float() {
+        assert_eq!(20f64, 30);
+        assert_eq!(21_f64, 31);
+        assert_eq!(22.0f64, 32);
+        assert_eq!(23.0_f64, 33);
+    }
+
+    #[replace_numeric_literals(add_10_f64(literal))]
+    fn test_mixed() {
+        assert_eq!(20f64, 20.0);
+        assert_eq!(21_f64, 21.0);
+        assert_eq!(22.0f64, 22.0);
+        assert_eq!(23.0_f64, 23.0);
+    }
+
+    test_float();
+    test_mixed();
+}
+
+#[test]
+fn converts_suffixed_ints() {
+    fn add_10_5_i32(value: i32) -> f64 {
+        value as f64 + 10.5
+    }
+
+    #[allow(unused)]
+    fn add_10_f64(value: f64) -> f64 {
+        value + 10.0
+    }
+
+    #[replace_int_literals(add_10_5_i32(literal))]
+    fn test_int() {
+        assert_eq!(20i32, 30.5);
+        assert_eq!(21_i32, 31.5);
+    }
+
+    // Ensure that `replace_int_literals` doesn't touch int literals with float suffix
+    #[replace_int_literals(add_10_f64(literal))]
+    fn test_float() {
+        assert_ne!(20f64, 30.5);
+        assert_ne!(21_f64, 31.5);
+    }
+
+    #[replace_numeric_literals(add_10_5_i32(literal))]
+    fn test_mixed() {
+        assert_eq!(20i32, 20);
+        assert_eq!(21_i32, 21);
+    }
+
+    test_int();
+    test_float();
+    test_mixed();
 }
