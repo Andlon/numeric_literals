@@ -42,7 +42,7 @@
 //! Float and integer literal replacement
 //! -------------------------------------
 //!
-//! An issue with the replacement of numeric literals is that there is no way to dinstinguish
+//! An issue with the replacement of numeric literals is that there is no way to distinguish
 //! literals that are used for e.g. indexing from those that are part of a numerical computation.
 //! In the example above, if you would additionally need to index into an array with a constant index
 //! such as `array[0]`, the macro will try to convert the index `0` to a float type, which
@@ -117,6 +117,26 @@ struct IntLiteralVisitor<'a> {
     pub replacement: &'a Expr,
 }
 
+/// Represents classes of primitive types relevant to the crate
+enum PrimitiveClass {
+    Float,
+    Int,
+    Other,
+}
+
+/// Returns what class of primitive types is represented by this literal expression, e.g. `20f64 -> Float`, `20 -> Int`
+fn determine_primitive_class(lit_expr: &ExprLit) -> PrimitiveClass {
+    match &lit_expr.lit {
+        // Parsed float literals are always floats
+        Lit::Float(_) => PrimitiveClass::Float,
+        // Literals like `20f64` are parsed as `LitInt`s
+        Lit::Int(int_lit) if matches!(int_lit.suffix(), "f32" | "f64") => PrimitiveClass::Float,
+        // All other integer literals should be actual integers
+        Lit::Int(_) => PrimitiveClass::Int,
+        _ => PrimitiveClass::Other,
+    }
+}
+
 fn replace_literal(expr: &mut Expr, placeholder: &str, literal: &ExprLit) {
     let mut replacer = ReplacementExpressionVisitor {
         placeholder,
@@ -164,7 +184,7 @@ fn visit_macros_mut<V: VisitMut>(visitor: &mut V, mac: &mut Macro) {
 impl<'a> VisitMut for FloatLiteralVisitor<'a> {
     fn visit_expr_mut(&mut self, expr: &mut Expr) {
         if let Expr::Lit(lit_expr) = expr {
-            if let Lit::Float(_) = lit_expr.lit {
+            if let PrimitiveClass::Float = determine_primitive_class(&lit_expr) {
                 let mut adapted_replacement = self.replacement.clone();
                 replace_literal(&mut adapted_replacement, self.placeholder, lit_expr);
                 *expr = adapted_replacement;
@@ -184,7 +204,7 @@ impl<'a> VisitMut for FloatLiteralVisitor<'a> {
 impl<'a> VisitMut for IntLiteralVisitor<'a> {
     fn visit_expr_mut(&mut self, expr: &mut Expr) {
         if let Expr::Lit(lit_expr) = expr {
-            if let Lit::Int(_) = lit_expr.lit {
+            if let PrimitiveClass::Int = determine_primitive_class(&lit_expr) {
                 let mut adapted_replacement = self.replacement.clone();
                 replace_literal(&mut adapted_replacement, self.placeholder, lit_expr);
                 *expr = adapted_replacement;
@@ -204,24 +224,25 @@ impl<'a> VisitMut for IntLiteralVisitor<'a> {
 impl<'a> VisitMut for NumericLiteralVisitor<'a> {
     fn visit_expr_mut(&mut self, expr: &mut Expr) {
         if let Expr::Lit(lit_expr) = expr {
-            match lit_expr.lit {
-                // TODO: Currently we cannot correctly treat integers that don't fit in 64
-                // bits. For this we'd have to deal with verbatim literals and manually
-                // parse the string
-                Lit::Int(_) => {
-                    let mut visitor = IntLiteralVisitor {
-                        parameters: self.parameters,
-                        placeholder: self.placeholder,
-                        replacement: self.int_replacement,
-                    };
-                    visitor.visit_expr_mut(expr);
-                    return;
-                }
-                Lit::Float(_) => {
+            // TODO: Currently we cannot correctly treat integers that don't fit in 64
+            //  bits. For this we'd have to deal with verbatim literals and manually
+            //  parse the string
+
+            match determine_primitive_class(&lit_expr) {
+                PrimitiveClass::Float => {
                     let mut visitor = FloatLiteralVisitor {
                         parameters: self.parameters,
                         placeholder: self.placeholder,
                         replacement: self.float_replacement,
+                    };
+                    visitor.visit_expr_mut(expr);
+                    return;
+                }
+                PrimitiveClass::Int => {
+                    let mut visitor = IntLiteralVisitor {
+                        parameters: self.parameters,
+                        placeholder: self.placeholder,
+                        replacement: self.int_replacement,
                     };
                     visitor.visit_expr_mut(expr);
                     return;
